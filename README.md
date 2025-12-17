@@ -1,32 +1,60 @@
 # 🐰 AlanBot (Terminal AI Assistant)
 
-**Copyright (c) 2025 AlanBotDev**
+**Copyright (c) 2025 [Your Name]**
 
-**AlanBot** is a private, 100% OFFLINE AI coding assistant designed for Linux terminals. It runs the powerful **DeepSeek Coder** model directly on your hardware, ensuring your code and data never leave your machine.
+**AlanBot** is a professional, 100% OFFLINE AI coding assistant designed for Linux terminals. It runs the powerful **DeepSeek Coder** model directly on your hardware, ensuring your code and data never leave your machine.
 
 ![License](https://img.shields.io/badge/license-MIT-blue.svg)
 ![Platform](https://img.shields.io/badge/platform-Linux-green.svg)
-![Status](https://img.shields.io/badge/status-stable-purple.svg)
+![Version](https://img.shields.io/badge/version-v4.1-purple.svg)
 
 ## ⚡ Features
 
-* **Zero Data Leaks:** Runs locally. No internet required after installation.
-* **DeepSeek Engine:** Powered by the `deepseek-coder:6.7b` neural network.
-* **Smart Fixes:** Automatically sanitizes output to prevent common formatting errors.
-* **Cyberpunk CLI:** A beautiful, responsive terminal interface.
+* **100% Offline:** Runs locally via Ollama. No internet required after installation.
+* **3 Operation Modes:**
+    * **💻 Coding Only:** Strict, fast, no chit-chat.
+    * **🗣️ Questions:** Good for explanations and general help.
+    * **🚀 Hybrid:** The smartest mode—can chat AND write code (Recommended).
+* **Smart Fixes:** Automatically sanitizes output to prevent common formatting errors (like broken code blocks).
+* **Cyberpunk UI:** Features retro loading screens and a beautiful terminal interface.
 * **Clipboard Ready:** Type `copy` to instantly grab code blocks.
-* **Universal Command:** Run `alanbot` from any folder.
+* **Global Command:** Run `alanbot` from any directory on your computer.
 
 ---
 
-## 💿 Installation Guide
+## 📋 Prerequisites
 
-AlanBot includes an automated "All-in-One" installer that handles dependencies, model downloading, and setup.
+Before you begin, you need two things installed on your Linux machine:
 
-### 1. Download
-Download the `setup_alanbot.sh` file to your computer.
+1.  **Python 3** (Most Linux systems have this already).
+2.  **Ollama**: This is the engine that runs the AI model.
+    * *To install Ollama, open a terminal and run:*
+        ```bash
+        curl -fsSL [https://ollama.com/install.sh](https://ollama.com/install.sh) | sh
+        ```
 
-### 2. Set Permissions
-Open your terminal, navigate to the folder where you saved the file, and make it executable:
+---
+
+## 💿 Installation Guide (Step-by-Step)
+
+Follow these exact steps to set up AlanBot.
+
+### Step 1: Download the Installer
+Download the file `setup_alanbot.sh` and save it to a folder on your computer (e.g., your Home folder or Downloads).
+
+### Step 2: Open Terminal
+Open your terminal and navigate to the folder where you saved the file.
+* *Example (if you saved it in Downloads):*
+    ```bash
+    cd ~/Downloads
+    ```
+
+### Step 3: Make it Executable
+Run this command to give the file permission to run:
 ```bash
 chmod +x setup_alanbot.sh
+
+
+### Step 4: Run it
+Run this command to launch the setup tool
+./setup_alanbot.sh
