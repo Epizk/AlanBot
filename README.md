@@ -1,6 +1,6 @@
 # 🐰 AlanBot (Terminal AI Assistant)
 
-**Copyright (c) 2025 [Your Name]**
+**Copyright (c) 2025 AlanBot**
 
 **AlanBot** is a professional, 100% OFFLINE AI coding assistant designed for Linux terminals. It runs the powerful **DeepSeek Coder** model directly on your hardware, ensuring your code and data never leave your machine.
 
@@ -54,7 +54,5 @@ Run this command to give the file permission to run:
 ```bash
 chmod +x setup_alanbot.sh
 
-
-### Step 4: Run it
-Run this command to launch the setup tool
-./setup_alanbot.sh
+###Final step: Run it
+Use this to run it ./setup_alanbot.sh
