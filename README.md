@@ -24,9 +24,9 @@
 AlanBot includes an automated "All-in-One" installer that handles dependencies, model downloading, and setup.
 
 ### 1. Download
-Download the `alanbot_installer.sh` file to your computer.
+Download the `setup_alanbot.sh` file to your computer.
 
 ### 2. Set Permissions
 Open your terminal, navigate to the folder where you saved the file, and make it executable:
 ```bash
-chmod +x alanbot_installer.sh
+chmod +x setup_alanbot.sh
