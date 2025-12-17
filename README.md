@@ -49,10 +49,10 @@ Open your terminal and navigate to the folder where you saved the file.
     cd ~/Downloads
     ```
 
-### Step 3: Make it Executable
+### Step 3: Make it Executable then run it
 Run this command to give the file permission to run:
 ```bash
 chmod +x setup_alanbot.sh
 
-###Final step: Run it
-Use this to run it ./setup_alanbot.sh
+./setup_alanbot.sh
+
