@@ -1,8 +1,7 @@
 #!/bin/bash
 
-# --- ALANBOT SUITE v4.0 ---
-# The only file you need.
-# Handles Install, Repair, Uninstall, and Global Command creation.
+# --- ALANBOT SUITE v4.1 ---
+# Features: Loading Screen, Mode Selection, and Smart Prompts.
 
 # --- COLORS & UI ---
 PURPLE='\033[1;35m'
@@ -17,27 +16,20 @@ INSTALL_DIR="$HOME/.alanbot"
 BIN_PATH="/usr/local/bin/alanbot"
 MODEL_ID="deepseek-coder:6.7b"
 
-# --- LOADING BAR FUNCTION ---
-# Usage: loading_bar "Message" Duration
+# --- INSTALLER FUNCTIONS ---
+
 loading_bar() {
     local msg="$1"
     local duration=${2:-2}
-    local width=30
-    local step=$(bc <<< "scale=4; $duration / 100")
-    
     echo -ne "\n${BOLD}${PURPLE}[*] $msg${RESET}\n"
-    
-    for ((i=0; i<=100; i+=2)); do
-        local filled=$(printf "%0.s█" $(seq 1 $((i*width/100))))
-        local empty=$(printf "%0.s░" $(seq 1 $((width-(i*width/100)))))
-        echo -ne "\r${PURPLE}[${filled}${GREY}${empty}${PURPLE}] ${i}%${RESET}"
-        sleep $step
+    for ((i=0; i<=100; i+=5)); do
+        printf "\r${PURPLE}[%-20s] %d%%${RESET}" "$(head -c $((i/5)) < /dev/zero | tr '\0' '█')" "$i"
+        sleep $(bc <<< "scale=4; $duration / 20")
     done
     echo -e " ${GREEN}✔ DONE${RESET}\n"
 }
 
-# --- HEADER ART ---
-show_logo() {
+show_header() {
     clear
     echo -e "${PURPLE}"
     echo "    ___    __              ____        __ "
@@ -45,34 +37,15 @@ show_logo() {
     echo "  / /| | / / __ \`/ __ \  / __  / __ \/ __/"
     echo " / ___ |/ / /_/ / / / / / /_/ / /_/ / /_  "
     echo "/_/  |_/_/\__,_/_/ /_/ /_____/\____/\__/  "
-    echo -e "${CYAN}      :: REPAIR & INSTALL SUITE v4.0 ::${RESET}\n"
+    echo -e "${CYAN}      :: SYSTEM INSTALLER v4.1 ::${RESET}\n"
 }
 
-# --- UNINSTALLER ---
-do_uninstall() {
-    echo -e "${RED}!!! WARNING !!!${RESET}"
-    echo -e "This will completely delete AlanBot and the 'alanbot' command."
-    read -p "Are you sure? (y/n): " confirm
-    if [[ "$confirm" != "y" ]]; then return; fi
-
-    loading_bar "Removing Files..." 1
-    rm -rf "$INSTALL_DIR"
-    
-    if [ -f "$BIN_PATH" ]; then
-        echo -e "${CYAN}[sudo] Removing global command...${RESET}"
-        sudo rm "$BIN_PATH"
-    fi
-    
-    echo -e "${GREEN}✔ AlanBot has been uninstalled.${RESET}"
-    exit 0
-}
-
-# --- GENERATE PYTHON CORE (v3.7 Fix) ---
 generate_python() {
     mkdir -p "$INSTALL_DIR"
     
+    # WRITING THE PYTHON BRAIN
     cat << 'PY_EOF' > "$INSTALL_DIR/alanbot.py"
-import sys, re, ollama, platform
+import sys, re, ollama, time, random
 from rich.console import Console
 from rich.markdown import Markdown
 from rich.panel import Panel
@@ -80,43 +53,91 @@ from rich.live import Live
 from rich.text import Text
 from rich.align import Align
 from rich.prompt import Prompt
+from rich.layout import Layout
 
-# Clipboard setup
 try: import pyperclip
 except ImportError: pyperclip = None
 
 MODEL_NAME = "deepseek-coder:6.7b"
-VERSION = "v4.0 (Global)"
 console = Console()
 
-# --- THE FIX: Sanitizes broken <``` inputs ---
+# --- PROMPTS ---
+PROMPT_CODING = """
+You are a high-performance code generator.
+RULES:
+1. Output ONLY Markdown code blocks (e.g., ```python).
+2. Do not explain the code. Do not chat.
+3. If the user asks for a website for a specific business (e.g., "Redlinski's"), generate a professional TEMPLATE for that type of business. Do not refuse.
+"""
+
+PROMPT_CHAT = """
+You are a helpful AI assistant. 
+1. Answer questions clearly and concisely.
+2. Explain concepts simply.
+3. You can use code blocks for examples if needed.
+"""
+
+PROMPT_HYBRID = """
+You are AlanBot, an expert coding companion.
+1. You can chat, explain concepts, AND write code.
+2. When writing code, use Markdown blocks.
+3. Be helpful, concise, and smart.
+"""
+
 def clean_output(text):
-    text = text.replace("<```", "```")
-    text = text.replace("```>", "```")
+    # Fix broken brackets hallucinated by some models
+    text = text.replace("<```", "```").replace("```>", "```")
     return text
 
-def get_header():
-    bunny = r"""
-   (\_/)
-   ( •_•)   ALANBOT
-   / > 💜   SYSTEM ONLINE"""
-    return Panel(Text(bunny, style="bold bright_magenta"), style="purple", expand=False)
+def show_fake_loading():
+    """Shows a cool retro loading screen on startup"""
+    console.clear()
+    steps = ["Initializing Core...", "Connecting to DeepSeek...", "Mounting Filesystem...", "Loading Personality..."]
+    
+    for step in steps:
+        time.sleep(random.uniform(0.3, 0.7))
+        console.print(f"[bold purple]>> {step}[/bold purple]")
+    
+    time.sleep(0.5)
+    console.clear()
+
+def get_mode():
+    """Displays the Mode Selection Menu"""
+    console.print(Panel(Text("🐰 ALANBOT v4.1", justify="center", style="bold magenta"), style="purple"))
+    console.print("\n[bold white]Select Operation Mode:[/bold white]")
+    console.print("[1] [bold cyan]Coding Only[/bold cyan] (Strict, Fast, No Chat)")
+    console.print("[2] [bold green]Questions[/bold green] (Explanations, Chat)")
+    console.print("[3] [bold yellow]Hybrid[/bold yellow] (Both - Recommended)\n")
+    
+    while True:
+        choice = Prompt.ask("[bold purple]Selection[/bold purple]", choices=["1", "2", "3"], default="3")
+        if choice == "1": return PROMPT_CODING, "💻 CODING MODE"
+        if choice == "2": return PROMPT_CHAT, "🗣️ CHAT MODE"
+        if choice == "3": return PROMPT_HYBRID, "🚀 HYBRID MODE"
 
 def main():
+    # 1. Loading Screen
+    show_fake_loading()
+    
+    # 2. Menu
+    system_prompt, mode_name = get_mode()
+    
     console.clear()
-    console.print(get_header())
+    header_text = f"🐰 ALANBOT ONLINE | {mode_name}"
+    console.print(Panel(header_text, style="bold magenta", border_style="purple"))
+    console.print("[dim]Type 'exit' to quit, 'copy' to copy code, 'clear' to clear.[/dim]\n")
+
     history = []
     
     while True:
         try:
-            # User Input
             user = Prompt.ask("\n[bold purple]alanbot >>[/bold purple]")
             
             # Commands
             if user.lower() in ['exit', 'quit']: break
             if user.lower() == 'clear': 
                 console.clear()
-                console.print(get_header())
+                console.print(Panel(header_text, style="bold magenta", border_style="purple"))
                 continue
             
             if user.lower() == 'copy':
@@ -124,40 +145,38 @@ def main():
                     console.print("[red]Nothing to copy.[/red]")
                     continue
                 last_msg = history[-1]['content']
-                # Extract code block
                 code = re.findall(r'```(?:\w+)?\s*([\s\S]*?)\s*```', last_msg)
                 if code and pyperclip:
                     pyperclip.copy(code[-1].strip())
-                    console.print("[bold green]✔ Copied to clipboard![/bold green]")
+                    console.print("[bold green]✔ Copied![/bold green]")
                 elif not pyperclip:
-                    console.print("[red]Error: 'pyperclip' module missing.[/red]")
+                    console.print("[red]Error: 'pyperclip' missing.[/red]")
                 else:
-                    console.print("[red]No code block found in last message.[/red]")
+                    console.print("[red]No code found.[/red]")
                 continue
 
             if not user.strip(): continue
 
-            # AI Processing
+            # AI Logic
             history.append({'role': 'user', 'content': user})
             
-            with Live(Panel("...", style="dim purple"), refresh_per_second=10) as live:
+            with Live(Panel("Thinking...", style="dim purple"), refresh_per_second=10) as live:
                 full_resp = ""
-                # STRICT PROMPT
-                sys_prompt = "You are a CLI coding bot. OUTPUT ONLY MARKDOWN CODE. NO CONVERSATION."
+                # Send the selected SYSTEM PROMPT first
+                messages = [{'role':'system', 'content':system_prompt}] + history
                 
-                stream = ollama.chat(model=MODEL_NAME, messages=[{'role':'system', 'content':sys_prompt}] + history, stream=True)
+                stream = ollama.chat(model=MODEL_NAME, messages=messages, stream=True)
                 
                 for chunk in stream:
                     content = chunk['message']['content']
                     full_resp += content
-                    # Real-time sanitation
                     clean = clean_output(full_resp)
-                    live.update(Panel(Markdown(clean), title="✨ AlanBot", border_style="bright_magenta"))
+                    live.update(Panel(Markdown(clean), title=f"✨ AlanBot ({mode_name})", border_style="bright_magenta"))
                 
-                # Save sanitized version
                 history.append({'role': 'assistant', 'content': clean_output(full_resp)})
 
         except KeyboardInterrupt:
+            console.print("\n[purple]Shutting down...[/purple]")
             break
 
 if __name__ == "__main__":
@@ -165,50 +184,32 @@ if __name__ == "__main__":
 PY_EOF
 }
 
-# --- MAIN INSTALLER LOGIC ---
 do_install() {
-    # 1. PRE-FLIGHT CHECKS
-    if ! command -v python3 &> /dev/null; then
-        echo -e "${RED}Error: Python3 is not installed.${RESET}"
-        exit 1
-    fi
-
+    # CHECKS
     if ! command -v ollama &> /dev/null; then
-        echo -e "${RED}Error: Ollama is missing.${RESET}"
-        echo "Please install from [https://ollama.com](https://ollama.com) first."
+        echo -e "${RED}Error: Install Ollama first ([https://ollama.com](https://ollama.com)).${RESET}"
         exit 1
     fi
 
-    # 2. MODEL CHECK
-    echo -e "${CYAN}Checking AI Engine...${RESET}"
+    # MODEL
+    echo -e "${CYAN}Checking Brain...${RESET}"
     if ! ollama list | grep -q "$MODEL_ID"; then
-        echo -e "${PURPLE}Model ($MODEL_ID) not found. Downloading...${RESET}"
+        echo "Downloading DeepSeek Model..."
         ollama pull "$MODEL_ID"
-    else
-        echo -e "${GREEN}✔ Model Ready.${RESET}"
     fi
 
-    # 3. SETUP FOLDER & ENV
-    loading_bar "Building Brain Logic..." 1
-    
-    # Nuke old folder for a clean install
+    # INSTALL
+    loading_bar "Installing v4.1 Core..." 2
     rm -rf "$INSTALL_DIR"
-    mkdir -p "$INSTALL_DIR"
-    
-    # Generate the python file
     generate_python
-    
-    # Setup venv
-    loading_bar "Installing Python Deps..." 2
+
+    # ENV
     cd "$INSTALL_DIR"
     python3 -m venv ai_env
     source ai_env/bin/activate
     pip install ollama rich pyperclip > /dev/null 2>&1
 
-    # 4. CREATE GLOBAL COMMAND
-    echo -e "\n${CYAN}Creating global 'alanbot' command...${RESET}"
-    
-    # Create the launcher script locally first
+    # GLOBAL COMMAND
     cat << LAUNCHER > "$INSTALL_DIR/launcher.sh"
 #!/bin/bash
 source "$INSTALL_DIR/ai_env/bin/activate"
@@ -216,35 +217,30 @@ python3 "$INSTALL_DIR/alanbot.py"
 LAUNCHER
     chmod +x "$INSTALL_DIR/launcher.sh"
 
-    # Move to /usr/local/bin (Needs sudo)
-    if [ -f "$BIN_PATH" ]; then
-        echo "Updating existing command..."
-        sudo rm "$BIN_PATH"
-    fi
+    if [ -f "$BIN_PATH" ]; then sudo rm "$BIN_PATH"; fi
     
-    echo -e "${PURPLE}[sudo] Password required to make 'alanbot' command global:${RESET}"
+    echo -e "${PURPLE}Permission needed to create 'alanbot' command:${RESET}"
     sudo ln -s "$INSTALL_DIR/launcher.sh" "$BIN_PATH"
 
-    loading_bar "Finalizing Install..." 1
+    echo -e "\n${GREEN}✔ SUCCESS!${RESET}"
+    echo -e "Type ${BOLD}alanbot${RESET} to start."
+}
 
-    echo -e "\n${GREEN}==============================${RESET}"
-    echo -e "${GREEN}   ✔ INSTALLATION COMPLETE    ${RESET}"
-    echo -e "${GREEN}==============================${RESET}"
-    echo -e "You can now type ${BOLD}${PURPLE}alanbot${RESET} anywhere in your terminal."
+do_uninstall() {
+    rm -rf "$INSTALL_DIR"
+    sudo rm "$BIN_PATH"
+    echo "Uninstalled."
 }
 
 # --- MENU ---
-show_logo
-echo "Select an option:"
-echo "1) Install / Repair AlanBot"
-echo "2) Uninstall AlanBot"
+show_header
+echo "1) Install AlanBot v4.1 (Fixes 'Dumb' AI)"
+echo "2) Uninstall"
 echo "3) Exit"
-echo
 read -p ">> " choice
 
 case $choice in
     1) do_install ;;
     2) do_uninstall ;;
     3) exit ;;
-    *) echo "Invalid option";;
 esac
