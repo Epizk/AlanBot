@@ -5,7 +5,7 @@ AlanBot is a persistent, offline command-line interface (CLI) for AI interaction
 ## System Requirements
 
 * **Operating System:** Linux (Ubuntu, Debian, Arch, etc.)
-* **Disk Space:** Approximately **15GB** (Required for ALL distinct model weights).
+* **Disk Space:** Approximately **25GB** (Required for ALL distinct model weights).
 * **Internet Connection:** Required during installation to download model binaries and dependencies.
 * **Root/Sudo Privileges:** Required for installing system dependencies (Ollama, Python).
 
