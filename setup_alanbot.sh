@@ -1,9 +1,9 @@
 #!/bin/bash
 
-# --- ALANBOT SUITE v5.9 (Omni Update) ---
-# Feature: New 'Internet/Omni' Mode with Time Awareness
-# Feature: Custom Installation Menu (All vs Select)
-# Engine: Upgraded to Llama 3.1 for 'Strongest' Mode
+# --- ALANBOT SUITE v6.0 (TITAN EDITION) ---
+# FIX: Installs 'xclip' to fix the copy command
+# UPDATE: Swapped to Qwen 2.5 Coder & Mistral-Nemo (2025 Class)
+# ACTION: Aggressively removes old v5.x models
 
 # --- COLORS ---
 PURPLE='\033[1;35m'
@@ -20,11 +20,13 @@ HISTORY_DIR="$HOME/.alanbot/history"
 BIN_ALANBOT="/usr/local/bin/alanbot"
 BIN_MENU="/usr/local/bin/menu-alanbot"
 
-# --- AI MODELS ---
-MODEL_CODE="deepseek-coder-v2" 
-MODEL_CHAT="llama3.2" 
-MODEL_HYBRID="mistral"
-MODEL_OMNI="llama3.1" # The "Strongest" Model
+# --- NEW TITAN MODELS (2025 CLASS) ---
+MODEL_CODE="qwen2.5-coder:latest"      # The strongest coding model
+MODEL_OMNI="llama3.2:latest"           # The newest general intelligence
+MODEL_HYBRID="mistral-nemo"            # The new standard for logic/chat
+
+# --- OBSOLETE MODELS (TO DELETE) ---
+OLD_MODELS=("llama3.1" "deepseek-coder-v2" "mistral" "deepseek-coder:6.7b" "qwen2.5-coder:7b")
 
 # --- UI FUNCTIONS ---
 
@@ -36,34 +38,65 @@ clear_screen() {
     echo "  / /| | / / __ \`/ __ \  / __  / __ \/ __/"
     echo " / ___ |/ / /_/ / / / / / /_/ / /_/ / /_  "
     echo "/_/  |_/_/\__,_/_/ /_/ /_____/\____/\__/  "
-    echo -e "${CYAN}      :: SYSTEM INSTALLER v5.9 ::${RESET}\n"
+    echo -e "${RED}      :: SYSTEM TITAN v6.0 ::${RESET}\n"
 }
 
 check_dependencies() {
+    echo -e "${YELLOW}[*] Verifying System Core...${RESET}"
+    
+    # 1. Curl
     if ! command -v curl &> /dev/null; then
-        echo -e "${RED}Error: 'curl' is missing. Install it and retry.${RESET}"
+        echo -e "${RED}Error: 'curl' is missing.${RESET}"
         exit 1
     fi
-    if ! command -v ollama &> /dev/null; then
-        echo -e "${YELLOW}Authority Missing: Ollama AI Engine not found.${RESET}"
-        echo -e "${CYAN}Auto-installing Ollama now...${RESET}"
-        curl -fsSL https://ollama.com/install.sh | sh
+
+    # 2. XCLIP (CRITICAL FOR COPY COMMAND)
+    if ! command -v xclip &> /dev/null; then
+        echo -e "${YELLOW}Missing Clipboard Driver (xclip).${RESET}"
+        echo -e "${CYAN}Installing xclip (Requires Sudo)...${RESET}"
+        if command -v apt &> /dev/null; then
+            sudo apt update && sudo apt install xclip -y
+        elif command -v pacman &> /dev/null; then
+            sudo pacman -S xclip --noconfirm
+        elif command -v dnf &> /dev/null; then
+            sudo dnf install xclip -y
+        else
+            echo -e "${RED}Could not auto-install xclip. Please install 'xclip' manually.${RESET}"
+            read -p "Press Enter to continue anyway (Copy might fail)..."
+        fi
     else
-        echo -e "${GREEN}✔ Ollama Engine found.${RESET}"
+        echo -e "${GREEN}✔ Clipboard Driver Active.${RESET}"
     fi
+
+    # 3. Ollama
+    if ! command -v ollama &> /dev/null; then
+        echo -e "${CYAN}Installing AI Engine...${RESET}"
+        curl -fsSL https://ollama.com/install.sh | sh
+    fi
+    
     if ! pgrep -x "ollama" > /dev/null; then
         sudo systemctl start ollama
         sleep 2
     fi
 }
 
+purge_old_models() {
+    echo -e "\n${RED}${BOLD}[!] PURGING OBSOLETE NEURAL NETWORKS...${RESET}"
+    for model in "${OLD_MODELS[@]}"; do
+        if ollama list | grep -q "$model"; then
+            echo -e "${RED}    - Deleting $model...${RESET}"
+            ollama rm "$model" > /dev/null 2>&1
+        fi
+    done
+    echo -e "${GREEN}✔ System Cleaned.${RESET}\n"
+}
+
 download_model_live() {
     local model_name="$1"
     local friendly_name="$2"
     clear_screen
-    echo -e "${BOLD}${BLUE}⬇️  DOWNLOADING BRAIN: ${friendly_name}${RESET}"
+    echo -e "${BOLD}${RED}⬇️  INSTALLING TITAN MODEL: ${friendly_name}${RESET}"
     echo -e "${CYAN}Target: ${model_name}${RESET}"
-    echo -e "${CYAN}Status: Establishing Neural Link...${RESET}\n"
     ollama pull "$model_name"
     echo -e "\n${GREEN}✔ INSTALLED${RESET}"
     sleep 1
@@ -72,7 +105,7 @@ download_model_live() {
 generate_core_files() {
     mkdir -p "$HISTORY_DIR"
     
-    # 1. GENERATE PYTHON BRAIN (Now includes Time Injection)
+    # 1. GENERATE PYTHON BRAIN (Updated Copy Logic)
     cat << 'PY_EOF' > "$INSTALL_DIR/alanbot.py"
 import sys, os, json, re, ollama, datetime, time, random, pyperclip
 from rich.console import Console
@@ -87,32 +120,31 @@ CONFIG_FILE = os.path.expanduser("~/.alanbot/config.json")
 console = Console()
 
 # PROMPTS
-SYS_CODER = "You are a DeepSeek-powered Coding Assistant. Output Markdown code blocks. Be concise."
-SYS_CHAT = "You are AlanBot, a helpful assistant. Answer questions, do math, and be friendly."
-SYS_HYBRID = "You are Mistral. You are intelligent, balanced, and capable of both complex logic and friendly conversation."
+SYS_CODER = "You are Qwen 2.5 (TITAN). You are the most advanced coding AI. Output purely functional code in Markdown blocks. Be extremely concise."
+SYS_CHAT = "You are Llama 3.2 (Omni). You are a highly intelligent, conversational AI."
+SYS_HYBRID = "You are Mistral-Nemo. You balance logic and creativity perfectly."
 
-# THE NEW OMNI PROMPT (Dynamic)
 def get_omni_prompt():
     now = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    return f"You are the STRONGEST AI Mode (Llama 3.1). Current System Time: {now}. You have extensive knowledge of the world, history, science, and people. You are precise, highly intelligent, and aware of the current date."
+    return f"You are the TITAN OMNI AI (Llama 3.2). Current System Time: {now}. You possess superior reasoning capabilities. You are aware of the current date."
 
 def boot_sequence(model_name, mode):
     console.clear()
     steps = [
-        "Initializing Neural Interface...",
-        f"Loading Core Model: [cyan]{model_name}[/cyan]...",
-        f"Mode Selected: [bold red]{mode.upper()}[/bold red]",
-        "Syncing System Clock..."
+        "Initializing Titan Interface...",
+        f"Mounting Model: [red]{model_name}[/red]...",
+        f"Mode: [bold red]{mode.upper()}[/bold red]",
+        "Linking Clipboard Drivers..."
     ]
-    with console.status("[bold purple]System Booting...[/bold purple]", spinner="dots"):
+    with console.status("[bold red]SYSTEM STARTUP...[/bold red]", spinner="bouncingBar"):
         for step in steps:
-            time.sleep(random.uniform(0.1, 0.3))
+            time.sleep(0.2)
             console.print(f"[green]✔[/green] {step}")
-    time.sleep(0.3)
+    time.sleep(0.2)
     console.clear()
 
 def load_config():
-    default_conf = {"current_session": "default", "model": "llama3.2", "mode": "chat"}
+    default_conf = {"current_session": "default", "model": "llama3.2:latest", "mode": "internet"}
     if not os.path.exists(CONFIG_FILE): return default_conf
     try:
         with open(CONFIG_FILE, 'r') as f: return json.load(f)
@@ -130,7 +162,7 @@ def load_history(session_name):
         try:
             with open(filepath, 'r') as f:
                 data = json.load(f)
-                return data["history"], data.get("model", "llama3.2"), data.get("mode", "chat")
+                return data["history"], data.get("model", "llama3.2:latest"), data.get("mode", "internet")
         except: return [], None, None
     return [], None, None
 
@@ -142,10 +174,9 @@ def main():
     session_name = config.get("current_session", "default")
     history, saved_model, saved_mode = load_history(session_name)
     
-    model = saved_model if saved_model else config.get("model", "llama3.2")
-    mode = saved_mode if saved_mode else config.get("mode", "chat")
+    model = saved_model if saved_model else config.get("model", "llama3.2:latest")
+    mode = saved_mode if saved_mode else config.get("mode", "internet")
     
-    # DYNAMIC PROMPT SELECTION
     if mode == "code": sys_prompt = SYS_CODER
     elif mode == "hybrid": sys_prompt = SYS_HYBRID
     elif mode == "internet": sys_prompt = get_omni_prompt()
@@ -153,9 +184,8 @@ def main():
     
     boot_sequence(model, mode)
 
-    header = f"🐰 ALANBOT | Session: {session_name} | 🧠 {model}"
-    border_color = "red" if mode == "internet" else "purple"
-    console.print(Panel(header, style=f"bold {border_color}", border_style=border_color))
+    header = f"🐰 ALANBOT v6.0 | Session: {session_name} | 🧠 {model}"
+    console.print(Panel(header, style="bold red", border_style="red"))
     
     if history:
         console.print("[dim]Resuming conversation...[/dim]")
@@ -167,7 +197,7 @@ def main():
 
     while True:
         try:
-            user = Prompt.ask("\n[bold purple]>>[/bold purple]")
+            user = Prompt.ask("\n[bold red]>>[/bold red]")
             
             if user.lower() in ['exit', 'quit']:
                 save_history(session_name, history, model, mode)
@@ -179,14 +209,32 @@ def main():
                 save_history(session_name, history, model, mode)
                 os.system("menu-alanbot")
                 sys.exit()
+                
+            # --- FIXED COPY COMMAND ---
             if user.lower() == 'copy':
-                # (Copy logic omitted for brevity, same as previous)
+                found = False
+                for msg in reversed(history):
+                    if msg['role'] == 'assistant':
+                        # improved regex to catch language tagged and untagged blocks
+                        codes = re.findall(r"```(?:\w+)?\n(.*?)```", msg['content'], re.DOTALL)
+                        if codes:
+                            try:
+                                pyperclip.copy(codes[-1])
+                                console.print(Panel(f"[bold green]✔ Copied to Clipboard![/bold green]\n{codes[-1][:60]}...", border_style="green"))
+                                found = True
+                                break
+                            except Exception as e:
+                                console.print(f"[bold red]Clipboard Error: {e}[/bold red]")
+                                console.print("[dim]Ensure 'xclip' is installed (sudo apt install xclip)[/dim]")
+                                found = True
+                                break
+                if not found: console.print("[red]No code blocks found.[/red]")
                 continue
+                
             if not user.strip(): continue
 
             history.append({'role': 'user', 'content': user})
             
-            # REFRESH TIME for Internet Mode on every turn
             if mode == "internet": sys_prompt = get_omni_prompt()
             
             msgs_to_send = [{'role':'system', 'content':sys_prompt}] + history
@@ -194,11 +242,11 @@ def main():
             
             try:
                 stream = ollama.chat(model=model, messages=msgs_to_send, stream=True)
-                with Live(Panel("Thinking...", title="AlanBot", border_style="bright_magenta"), refresh_per_second=10) as live:
+                with Live(Panel("Processing...", title="Titan AI", border_style="red"), refresh_per_second=10) as live:
                     for chunk in stream:
                         content = chunk['message']['content']
                         full_resp += content
-                        live.update(Panel(Markdown(clean_output(full_resp)), title="✨ AlanBot", border_style="bright_magenta"))
+                        live.update(Panel(Markdown(clean_output(full_resp)), title="✨ AlanBot", border_style="red"))
                 
                 history.append({'role': 'assistant', 'content': clean_output(full_resp)})
                 save_history(session_name, history, model, mode)
@@ -217,7 +265,7 @@ PY_EOF
 
     # 2. GENERATE MENU
     cat << 'MENU_EOF' > "$INSTALL_DIR/menu.py"
-import os, json, time
+import os, json
 from rich.console import Console
 from rich.panel import Panel
 from rich.table import Table
@@ -239,42 +287,37 @@ def get_saved_sessions():
 
 def main():
     console.clear()
-    console.print(Panel("🐰 ALANBOT CONTROL CENTER", style="bold magenta", subtitle="v5.9"))
+    console.print(Panel("🐰 ALANBOT TITAN v6.0", style="bold red", subtitle="2025 Architecture"))
 
-    table = Table(box=box.ROUNDED)
+    table = Table(box=box.HEAVY)
     table.add_column("Key", justify="center", style="cyan", no_wrap=True)
     table.add_column("Mode", style="bold white")
     table.add_column("Model / Brain", style="dim")
-    table.add_column("Capability", style="green")
+    table.add_column("Power Level", style="red")
 
-    table.add_row("1", "General Chat", "Llama 3.2", "Casual, Fast, Writing")
-    table.add_row("2", "Expert Coder", "DeepSeek V2", "Python, C++, Systems")
-    table.add_row("3", "Hybrid Mode", "Mistral 7B", "Logic + Conversation")
+    table.add_row("1", "INTERNET / OMNI", "Llama 3.2", "TITAN (Date + General)")
+    table.add_row("2", "Titan Coder", "Qwen 2.5", "SOTA Coding Logic")
+    table.add_row("3", "Titan Hybrid", "Mistral-Nemo", "Enhanced Reasoning")
     table.add_section()
-    table.add_row("4", "INTERNET / OMNI", "Llama 3.1", "STRONGEST. Knows Date/Time + Everything")
-    table.add_section()
-    table.add_row("R", "Resume Chat", "Load Saved File", "Continue History")
+    table.add_row("R", "Resume Chat", "Load Saved File", "")
     table.add_row("Q", "Exit", "", "")
 
     console.print(table)
     
-    choice = Prompt.ask("\nSelect Option", choices=["1", "2", "3", "4", "r", "q", "R", "Q"])
+    choice = Prompt.ask("\nSelect Option", choices=["1", "2", "3", "r", "q", "R", "Q"])
     
     if choice == "1":
-        update_config(Prompt.ask("Session Name", default="chat"), "llama3.2", "chat")
+        update_config(Prompt.ask("Session Name", default="omni"), "llama3.2:latest", "internet")
     elif choice == "2":
-        update_config(Prompt.ask("Session Name", default="code"), "deepseek-coder-v2", "code")
+        update_config(Prompt.ask("Session Name", default="code"), "qwen2.5-coder:latest", "code")
     elif choice == "3":
-        update_config(Prompt.ask("Session Name", default="hybrid"), "mistral", "hybrid")
-    elif choice == "4":
-        console.print("[bold red]Loading Omni-Database...[/bold red]")
-        update_config(Prompt.ask("Session Name", default="omni"), "llama3.1", "internet")
+        update_config(Prompt.ask("Session Name", default="hybrid"), "mistral-nemo", "hybrid")
     elif choice.lower() == "r":
         sessions = get_saved_sessions()
         if not sessions: return
         for i, s in enumerate(sessions): console.print(f"[{i+1}] {s}")
         idx = Prompt.ask("Select number", default="1")
-        try: update_config(sessions[int(idx)-1], "llama3.2", "chat") 
+        try: update_config(sessions[int(idx)-1], "llama3.2:latest", "internet") 
         except: return
     elif choice.lower() == "q":
         return
@@ -289,37 +332,33 @@ MENU_EOF
 do_install() {
     clear_screen
     check_dependencies
+    
+    # REMOVE OLD JUNK
+    purge_old_models
 
-    # --- NEW INSTALLATION MENU ---
     echo -e "${BOLD}Select Installation Type:${RESET}"
-    echo "1) Install ALL AI Models (Recommended - ~25GB)"
-    echo "2) Custom Installation (Choose what you want)"
+    echo "1) Install TITAN SUITE (Recommended - All 3 Models)"
+    echo "2) Custom Installation"
     read -p ">> " install_type
 
     if [ "$install_type" == "1" ]; then
-        download_model_live "$MODEL_CHAT" "General Chat (Llama 3.2)"
-        download_model_live "$MODEL_CODE" "Expert Coder (DeepSeek V2)"
-        download_model_live "$MODEL_HYBRID" "Hybrid Brain (Mistral)"
-        download_model_live "$MODEL_OMNI" "INTERNET/OMNI (Llama 3.1)"
+        download_model_live "$MODEL_OMNI" "TITAN OMNI (Llama 3.2)"
+        download_model_live "$MODEL_CODE" "TITAN CODER (Qwen 2.5)"
+        download_model_live "$MODEL_HYBRID" "TITAN HYBRID (Mistral-Nemo)"
     else
-        echo ""
-        read -p "Install General Chat (Llama 3.2)? [y/n]: " yn_chat
-        [[ "$yn_chat" =~ ^[Yy]$ ]] && download_model_live "$MODEL_CHAT" "General Chat"
-        
-        read -p "Install Expert Coder (DeepSeek V2)? [y/n]: " yn_code
-        [[ "$yn_code" =~ ^[Yy]$ ]] && download_model_live "$MODEL_CODE" "Expert Coder"
-        
-        read -p "Install Hybrid Brain (Mistral)? [y/n]: " yn_hyb
-        [[ "$yn_hyb" =~ ^[Yy]$ ]] && download_model_live "$MODEL_HYBRID" "Hybrid Brain"
-        
-        read -p "Install INTERNET/OMNI (Llama 3.1 - The Strongest)? [y/n]: " yn_omni
+        read -p "Install TITAN OMNI (Llama 3.2)? [y/n]: " yn_omni
         [[ "$yn_omni" =~ ^[Yy]$ ]] && download_model_live "$MODEL_OMNI" "OMNI BRAIN"
+        
+        read -p "Install TITAN CODER (Qwen 2.5)? [y/n]: " yn_code
+        [[ "$yn_code" =~ ^[Yy]$ ]] && download_model_live "$MODEL_CODE" "CODER BRAIN"
+        
+        read -p "Install TITAN HYBRID (Mistral-Nemo)? [y/n]: " yn_hyb
+        [[ "$yn_hyb" =~ ^[Yy]$ ]] && download_model_live "$MODEL_HYBRID" "HYBRID BRAIN"
     fi
 
-    # SETUP FILES
+    # CONFIG
     clear_screen
     echo -e "${PURPLE}[*] Configuring Systems...${RESET}"
-    
     if [ -d "$INSTALL_DIR/ai_env" ]; then rm -rf "$INSTALL_DIR/ai_env"; fi
     generate_core_files
 
@@ -360,7 +399,7 @@ do_uninstall() {
 }
 
 clear_screen
-echo "1) Install / Update (v5.9 Omni)"
+echo "1) Install / Update (v6.0 TITAN)"
 echo "2) Uninstall"
 echo "3) Exit"
 read -p ">> " choice
