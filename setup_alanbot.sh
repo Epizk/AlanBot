@@ -1,13 +1,14 @@
 #!/bin/bash
 
-# --- ALANBOT SUITE v5.0 ---
-# Features: Dual Models (Chat vs Code), Save System, Switcher Menu
+# --- ALANBOT SUITE v5.1.1 (Bugfix & Clean Install) ---
+# Features: Qwen 2.5 Coder, Llama 3.2, Auto-Cleanup of old models.
 
 # --- COLORS ---
 PURPLE='\033[1;35m'
 CYAN='\033[1;36m'
 GREEN='\033[1;32m'
 RED='\033[1;31m'
+YELLOW='\033[1;33m'
 BOLD='\033[1m'
 RESET='\033[0m'
 
@@ -17,11 +18,15 @@ CONFIG_FILE="$HOME/.alanbot/config.json"
 BIN_ALANBOT="/usr/local/bin/alanbot"
 BIN_MENU="/usr/local/bin/menu-alanbot"
 
-# MODELS
-MODEL_CODE="deepseek-coder:6.7b"
+# --- AI MODELS ---
+# Coding: Qwen 2.5 Coder (State of the Art for local coding)
+MODEL_CODE="qwen2.5-coder:7b"
+# Chat: Llama 3.2 (Best for general chat/math)
 MODEL_CHAT="llama3.2" 
+# Old Model to remove (Save space)
+MODEL_OLD="deepseek-coder:6.7b"
 
-# --- INSTALLER FUNCTIONS ---
+# --- HELPER FUNCTIONS ---
 
 loading_bar() {
     local msg="$1"
@@ -41,15 +46,15 @@ show_header() {
     echo "  / /| | / / __ \`/ __ \  / __  / __ \/ __/"
     echo " / ___ |/ / /_/ / / / / / /_/ / /_/ / /_  "
     echo "/_/  |_/_/\__,_/_/ /_/ /_____/\____/\__/  "
-    echo -e "${CYAN}      :: SYSTEM INSTALLER v5.0 ::${RESET}\n"
+    echo -e "${CYAN}   :: INSTALLER v5.1.1 (Clean Build) ::${RESET}\n"
 }
 
-generate_python_core() {
+generate_core_files() {
     mkdir -p "$HISTORY_DIR"
     
-    # 1. GENERATE THE PYTHON BRAIN
+    # 1. GENERATE THE PYTHON BRAIN (Bugfix: Added error handling for config)
     cat << 'PY_EOF' > "$INSTALL_DIR/alanbot.py"
-import sys, os, json, re, ollama, argparse, datetime
+import sys, os, json, re, ollama, datetime, time
 from rich.console import Console
 from rich.markdown import Markdown
 from rich.panel import Panel
@@ -62,16 +67,30 @@ CONFIG_FILE = os.path.expanduser("~/.alanbot/config.json")
 console = Console()
 
 # PROMPTS
-SYS_CODER = "You are a strict Coding Assistant. Output Markdown code blocks. Do not chat unnecessarily."
+SYS_CODER = "You are a Qwen-powered Coding Assistant. Output Markdown code blocks. Be concise. Solve the problem accurately."
 SYS_CHAT = "You are AlanBot, a helpful assistant. Answer questions, do math, and be friendly. You can write code if asked."
 
 def load_config():
+    # Bugfix: Create default config if missing
+    default_conf = {"current_session": "default", "model": "llama3.2", "mode": "chat"}
     if not os.path.exists(CONFIG_FILE):
-        return {"current_session": "default", "model": "llama3.2", "mode": "chat"}
-    with open(CONFIG_FILE, 'r') as f:
-        return json.load(f)
+        try:
+            with open(CONFIG_FILE, 'w') as f:
+                json.dump(default_conf, f)
+        except:
+            pass
+        return default_conf
+        
+    try:
+        with open(CONFIG_FILE, 'r') as f:
+            return json.load(f)
+    except:
+        return default_conf
 
 def save_history(session_name, history, model, mode):
+    if not os.path.exists(HISTORY_DIR):
+        os.makedirs(HISTORY_DIR)
+        
     filepath = os.path.join(HISTORY_DIR, f"{session_name}.json")
     data = {
         "timestamp": str(datetime.datetime.now()),
@@ -85,34 +104,33 @@ def save_history(session_name, history, model, mode):
 def load_history(session_name):
     filepath = os.path.join(HISTORY_DIR, f"{session_name}.json")
     if os.path.exists(filepath):
-        with open(filepath, 'r') as f:
-            data = json.load(f)
-            return data["history"], data.get("model", "llama3.2"), data.get("mode", "chat")
+        try:
+            with open(filepath, 'r') as f:
+                data = json.load(f)
+                return data["history"], data.get("model", "llama3.2"), data.get("mode", "chat")
+        except:
+            return [], None, None
     return [], None, None
 
 def clean_output(text):
     return text.replace("<```", "```").replace("```>", "```")
 
 def main():
-    # Load settings
     config = load_config()
-    session_name = config["current_session"]
+    session_name = config.get("current_session", "default")
     
-    # Load previous chat
     history, saved_model, saved_mode = load_history(session_name)
     
-    # Determine Model/Mode (Saved takes precedence if resuming)
-    model = saved_model if saved_model else config["model"]
-    mode = saved_mode if saved_mode else config["mode"]
+    # Priority: Saved Model > Config Model
+    model = saved_model if saved_model else config.get("model", "llama3.2")
+    mode = saved_mode if saved_mode else config.get("mode", "chat")
     
-    # Select System Prompt
     sys_prompt = SYS_CODER if mode == "code" else SYS_CHAT
     
     console.clear()
     header = f"🐰 ALANBOT | Session: {session_name} | 🧠 {model}"
     console.print(Panel(header, style="bold magenta", border_style="purple"))
     
-    # Replay last few messages for context visual
     if history:
         console.print("[dim]Resuming conversation...[/dim]")
         for msg in history[-2:]:
@@ -134,18 +152,21 @@ def main():
             
             with Live(Panel("Thinking...", style="dim purple"), refresh_per_second=10) as live:
                 full_resp = ""
-                # Inject System Prompt dynamically
                 msgs_to_send = [{'role':'system', 'content':sys_prompt}] + history
                 
-                stream = ollama.chat(model=model, messages=msgs_to_send, stream=True)
-                
-                for chunk in stream:
-                    content = chunk['message']['content']
-                    full_resp += content
-                    live.update(Panel(Markdown(clean_output(full_resp)), title="AlanBot"))
-                
-                history.append({'role': 'assistant', 'content': clean_output(full_resp)})
-                save_history(session_name, history, model, mode)
+                try:
+                    stream = ollama.chat(model=model, messages=msgs_to_send, stream=True)
+                    for chunk in stream:
+                        content = chunk['message']['content']
+                        full_resp += content
+                        live.update(Panel(Markdown(clean_output(full_resp)), title="AlanBot"))
+                    
+                    history.append({'role': 'assistant', 'content': clean_output(full_resp)})
+                    save_history(session_name, history, model, mode)
+                except Exception as e:
+                    console.print(f"[red]Error connecting to AI: {e}[/red]")
+                    console.print("[yellow]Make sure Ollama is running (sudo systemctl start ollama)[/yellow]")
+                    break
 
         except KeyboardInterrupt:
             save_history(session_name, history, model, mode)
@@ -179,11 +200,11 @@ def get_saved_sessions():
 
 def main():
     console.clear()
-    console.print(Panel("🐰 ALANBOT MENU SYSTEM", style="bold magenta"))
+    console.print(Panel("🐰 ALANBOT MENU SYSTEM (v5.1)", style="bold magenta"))
     
-    console.print("[1] Start New Chat (🧠 General/Math) - Uses Llama3.2")
-    console.print("[2] Start New Chat (💻 Coding Strict) - Uses DeepSeek")
-    console.print("[3] Resume Previous Conversation")
+    console.print("[1] New Chat (🧠 General/Math) - Llama 3.2")
+    console.print("[2] New Chat (💻 High-Perf Coding) - Qwen 2.5 Coder")
+    console.print("[3] Resume Conversation")
     console.print("[4] Exit")
     
     choice = Prompt.ask("\nSelect", choices=["1", "2", "3", "4"])
@@ -195,7 +216,7 @@ def main():
         
     elif choice == "2":
         name = Prompt.ask("Name this session", default="code_1")
-        update_config(name, "deepseek-coder:6.7b", "code")
+        update_config(name, "qwen2.5-coder:7b", "code")
         console.print(f"[green]Session '{name}' created![/green] Run 'alanbot' to start.")
         
     elif choice == "3":
@@ -211,10 +232,7 @@ def main():
         idx = Prompt.ask("Select number", default="1")
         try:
             selected = sessions[int(idx)-1]
-            # We assume resumed chats keep their old model settings
-            # But we need to set the config so 'alanbot' knows which file to open
-            # We essentially just update the target file
-            update_config(selected, "llama3.2", "chat") # Defaults, will be overwritten by load logic
+            update_config(selected, "llama3.2", "chat") 
             console.print(f"[green]Resuming '{selected}'...[/green] Run 'alanbot' to start.")
         except:
             console.print("[red]Invalid selection[/red]")
@@ -234,38 +252,41 @@ do_install() {
         exit 1
     fi
 
-    # 2. CHECK/DOWNLOAD MODELS
-    echo -e "${CYAN}Checking AI Models...${RESET}"
+    # 2. MODEL CLEANUP & UPDATE
+    echo -e "${CYAN}Checking AI Model Integrity...${RESET}"
     
-    # Pull Coding Brain
-    if ! ollama list | grep -q "$MODEL_CODE"; then
-        echo -e "${PURPLE}Downloading Coding Brain ($MODEL_CODE)...${RESET}"
-        ollama pull "$MODEL_CODE"
-    else
-        echo -e "${GREEN}✔ Coding Brain Ready${RESET}"
+    # REMOVE OLD DEEPSEEK IF EXISTS (To save space)
+    if ollama list | grep -q "$MODEL_OLD"; then
+        echo -e "${YELLOW}Removing old model ($MODEL_OLD) to save space...${RESET}"
+        ollama rm "$MODEL_OLD"
     fi
 
-    # Pull Chat Brain (Fixes the "I am just a robot" issue)
-    if ! ollama list | grep -q "$MODEL_CHAT"; then
-        echo -e "${PURPLE}Downloading Chat Brain ($MODEL_CHAT)...${RESET}"
-        ollama pull "$MODEL_CHAT"
-    else
-        echo -e "${GREEN}✔ Chat Brain Ready${RESET}"
-    fi
+    # FORCE PULL QWEN (Coding)
+    echo -e "${PURPLE}Updating/Downloading Coding Brain ($MODEL_CODE)...${RESET}"
+    ollama pull "$MODEL_CODE"
+
+    # FORCE PULL LLAMA (Chat)
+    echo -e "${PURPLE}Updating/Downloading Chat Brain ($MODEL_CHAT)...${RESET}"
+    ollama pull "$MODEL_CHAT"
 
     # 3. GENERATE FILES
     loading_bar "Installing System Files..." 2
-    rm -rf "$INSTALL_DIR"
-    generate_python_core
+    
+    # Bugfix: Remove old environment to ensure fresh dependencies
+    if [ -d "$INSTALL_DIR/ai_env" ]; then
+        rm -rf "$INSTALL_DIR/ai_env"
+    fi
+    
+    generate_core_files
 
     # 4. SETUP ENV
+    echo -e "${CYAN}Setting up Python Environment...${RESET}"
     cd "$INSTALL_DIR"
     python3 -m venv ai_env
     source ai_env/bin/activate
-    pip install ollama rich pyperclip > /dev/null 2>&1
+    pip install --upgrade pip ollama rich pyperclip > /dev/null 2>&1
 
     # 5. CREATE LAUNCHERS
-    # Main Launcher
     cat << RUN_EOF > "$INSTALL_DIR/run_alanbot.sh"
 #!/bin/bash
 source "$INSTALL_DIR/ai_env/bin/activate"
@@ -273,7 +294,6 @@ python3 "$INSTALL_DIR/alanbot.py"
 RUN_EOF
     chmod +x "$INSTALL_DIR/run_alanbot.sh"
 
-    # Menu Launcher
     cat << MENU_EOF > "$INSTALL_DIR/run_menu.sh"
 #!/bin/bash
 source "$INSTALL_DIR/ai_env/bin/activate"
@@ -281,17 +301,21 @@ python3 "$INSTALL_DIR/menu.py"
 MENU_EOF
     chmod +x "$INSTALL_DIR/run_menu.sh"
 
-    # 6. SYMLINKS
-    if [ -f "$BIN_ALANBOT" ]; then sudo rm "$BIN_ALANBOT"; fi
-    if [ -f "$BIN_MENU" ]; then sudo rm "$BIN_MENU"; fi
-    
+    # 6. SYMLINKS (Bugfix: Better sudo handling)
     echo -e "${PURPLE}[sudo] Creating global commands...${RESET}"
+    
+    if [ -L "$BIN_ALANBOT" ] || [ -f "$BIN_ALANBOT" ]; then 
+        sudo rm "$BIN_ALANBOT"
+    fi
+    if [ -L "$BIN_MENU" ] || [ -f "$BIN_MENU" ]; then 
+        sudo rm "$BIN_MENU"
+    fi
+    
     sudo ln -s "$INSTALL_DIR/run_alanbot.sh" "$BIN_ALANBOT"
     sudo ln -s "$INSTALL_DIR/run_menu.sh" "$BIN_MENU"
 
     echo -e "\n${GREEN}✔ INSTALLATION COMPLETE${RESET}"
-    echo -e "1. Type ${BOLD}menu-alanbot${RESET} to create/switch conversations."
-    echo -e "2. Type ${BOLD}alanbot${RESET} to resume the active conversation."
+    echo -e "Type ${BOLD}menu-alanbot${RESET} to initialize."
 }
 
 do_uninstall() {
@@ -303,7 +327,7 @@ do_uninstall() {
 
 # --- MENU ---
 show_header
-echo "1) Install AlanBot v5.0 (Dual Brain & Save System)"
+echo "1) Install / Repair (Force Update Models)"
 echo "2) Uninstall"
 echo "3) Exit"
 read -p ">> " choice
