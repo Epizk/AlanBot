@@ -44,3 +44,4 @@ Download the `setup_alanbot.sh` file to a folder on your computer.
 Open your terminal, go to the folder, and make the script executable:
 ```bash
 chmod +x setup_alanbot.sh
+./setup_alanbot.sh
