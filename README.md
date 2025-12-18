@@ -1,11 +1,11 @@
-# AlanBot v5.6 - Local AI Assistant
+# AlanBot v5.7 - Local AI Assistant
 
-AlanBot is a persistent, offline command-line interface (CLI) for AI interaction on Linux systems. It leverages local neural networks via the Ollama backend, utilizing **Qwen 2.5 Coder** for programming tasks and **Llama 3.2** for general natural language processing.
+AlanBot is a persistent, offline command-line interface (CLI) for AI interaction on Linux systems. It leverages local neural networks via the Ollama backend. Version 5.7 introduces a stable display engine and a dedicated third model for hybrid logic.
 
 ## System Requirements
 
 * **Operating System:** Linux (Ubuntu, Debian, Arch, etc.)
-* **Disk Space:** Approximately 10GB (Required for model weights).
+* **Disk Space:** Approximately **15GB** (Required for 3 distinct model weights: Llama, Qwen, and Mistral).
 * **Internet Connection:** Required during installation to download model binaries and dependencies.
 * **Root/Sudo Privileges:** Required for installing system dependencies (Ollama, Python).
 
@@ -22,7 +22,7 @@ The provided shell script automates the installation of the Ollama backend, Pyth
     ```bash
     ./setup_alanbot.sh
     ```
-    *Select **Option 1** from the menu to proceed. The script will automatically detect missing dependencies (including Ollama) and install them.*
+    *Select **Option 1** from the menu. The script will automatically detect missing dependencies (including Ollama) and install them.*
 
 ## Usage
 
@@ -49,14 +49,15 @@ The following keywords trigger specific system actions during an active session:
 
 ## Model Architecture
 
-The system utilizes a dual-model approach based on the selected mode:
+The system utilizes a tri-model approach based on the selected mode:
 
 * **General Chat:** Uses **Llama 3.2**. Optimized for natural language, mathematics, and creative writing.
 * **Pro Coder:** Uses **Qwen 2.5 Coder**. Optimized for syntax generation, debugging, and logic.
-* **Hybrid (Experimental):** Forces the Qwen 2.5 model to adopt a conversational system prompt. Note that this mode may exhibit unstable behavior regarding tone and strictness.
+* **Hybrid Mode:** Uses **Mistral 7B**. A balanced model capable of handling both logic and conversation simultaneously, replacing the previous experimental implementation.
 
 ## Troubleshooting
 
+* **Display Glitches:** Version 5.7 includes a patch for terminal cursor overlapping. If issues persist, ensure your terminal emulator supports standard ANSI escape codes.
 * **Connection Errors:** Ensure the Ollama service is active.
     ```bash
     sudo systemctl start ollama
